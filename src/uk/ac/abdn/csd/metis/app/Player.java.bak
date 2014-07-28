@@ -1,0 +1,853 @@
+package uk.ac.abdn.csd.metis.app;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import peersim.core.CommonState;
+import uk.ac.abdn.csd.metis.p2p.Peer;
+
+import com.hp.hpl.jena.rdf.model.Model;
+import com.hp.hpl.jena.rdf.model.Property;
+import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.Resource;
+
+public class Player {
+	private Peer peer;
+	
+	private Model model;
+	
+	private Map map;
+	private int[][] grid;
+	private int width, height;
+	
+	private Participant self;
+	private String name;
+	
+	private Role role;
+	
+	private AppResource nil, crop, gold, stone, tree, lake, penalty;
+	private AppResource brick, food, money, wood, water;
+	private AppResource happiness, unhappiness;
+	
+	private List<Tile> path;
+	private Tile nextStep;
+	
+	private Property pMove, pGather, pCoord, pCoordGather, pCoordAgree, pCoordEnd;
+	private Property pExchange, pStartExchange, pPositionedAt, pXPosition, pYPosition, pImpatient;
+	private Property pQuantity;
+	
+	private String prefix = "http://www.abdn.ac.uk/metis.owl#";
+	
+	private String[] badCoord = {"", "", ""};	
+	
+	private int impatience = 0, tolerance = 0;
+	private int newX = -1, newY = -1;
+	private int coordID = -1;
+	private int helpfulness = 0;
+	private int oldFood = 0;
+	private int oldMoney = 0;
+	private int oldWater = 0;
+	private int oldWood = 0;
+	private int oldBrick = 0;	
+	private boolean forcedMove = false, plannedPath = false, coordSent = false, coordReceived = false, wait = false;
+	private boolean exchangeSent = false, exchanging = true, gathering = false, cancelCoord = false;
+	
+	Resource destinationC;
+	
+	public Player(String name, Peer peer, Model model){
+		this.name = name;
+		this.peer = peer;
+		this.model = model;		
+		//Jenabean.instance().bind(model);
+		
+		path = new ArrayList<Tile>();
+		
+		// Player
+		self = new Participant("self", prefix, model);		
+		
+		// Raw resources
+		nil = new AppResource("nil", "Raw", prefix, model);		
+		nil.setQuantity(-1);	
+		
+		crop = new AppResource("crop", "Raw", prefix, model);		
+		crop.setQuantity(-1);	
+		
+		gold = new AppResource("gold", "Raw", prefix, model);		
+		gold.setQuantity(-1);
+		
+		stone = new AppResource("stone", "Raw", prefix, model);		
+		stone.setQuantity(-1);
+		
+		tree = new AppResource("tree", "Raw", prefix, model);		
+		tree.setQuantity(-1);
+		
+		lake = new AppResource("lake", "Raw", prefix, model);		
+		lake.setQuantity(-1);
+		
+		penalty = new AppResource("penalty", "Raw", prefix, model);		
+		penalty.setQuantity(-1);
+		
+		// Processed resources
+		brick = new AppResource("brick", "Processed", prefix, model);		
+		brick.setQuantity(0);		
+				
+		food = new AppResource("food", "Processed", prefix, model);		
+		food.setQuantity(0);
+		
+		money = new AppResource("money", "Processed", prefix, model);		
+		money.setQuantity(0);
+		
+		wood = new AppResource("wood", "Processed", prefix, model);		
+		wood.setQuantity(0);
+		
+		water = new AppResource("water", "Processed", prefix, model);		
+		water.setQuantity(0);
+		
+		// Commodity resources
+		//bread = new AppResource("bread", "Commodity", prefix, model);		
+		//bread.setQuantity(0);
+		
+		// Metrics
+		happiness = new AppResource("happiness", "Raw", prefix, model);
+		happiness.setQuantity(0);
+		
+		unhappiness = new AppResource("unhappiness", "Raw", prefix, model);
+		unhappiness.setQuantity(0);
+		
+		// Properties
+		pPositionedAt = model.getProperty(prefix + "positionedAt");
+		pXPosition = model.getProperty(prefix + "xPosition");
+		pYPosition = model.getProperty(prefix + "yPosition");
+		pQuantity = model.createProperty(prefix + "quantity");		
+		
+		// Commands
+		pMove = model.createProperty(prefix + "move");
+		pGather = model.createProperty(prefix + "gather");
+		pCoord = model.createProperty(prefix + "coord");
+		pCoordAgree = model.createProperty(prefix + "coordAgree");
+		pCoordGather = model.createProperty(prefix + "coordGather");
+		pCoordEnd = model.createProperty(prefix + "coordEnd");
+		pExchange = model.createProperty(prefix + "exchange");
+		pStartExchange = model.createProperty(prefix + "startExchange");
+		pImpatient = model.createProperty(prefix + "impatient");
+	}
+	
+	public String getName(){
+		return name;
+	}
+	
+	public void setRole(String roleName){
+		role = new Role(roleName, prefix, model);		
+		self.setHasRole(role);
+	}
+	
+	public void setTolerance(int tolerance){
+		this.tolerance = tolerance;
+	}
+	
+	public void setPostion(int x, int y){		
+		Tile tile = map.getNode(x, y);
+		tile.setBeenVisited(true);
+		self.setPositionedAt(tile);		
+	}
+	
+	public void setMap(int width, int height, int[][] grid){
+		map = new Map(model, prefix, width, height, new TileFactory());
+		this.grid = grid;
+		this.width = width;
+		this.height = height;
+		
+		for(int x = 0; x < width; x++){
+			for(int y = 0; y < height; y++){
+				int resourceType = grid[x][y];
+				switch (resourceType){
+					case 0:						
+						map.setResource(x, y, nil);					
+						break;
+					case 1:
+						map.setResource(x, y, penalty);					
+						break;
+					case 2:
+						map.setResource(x, y, crop);					
+						break;
+					case 3:
+						map.setResource(x, y, gold);					
+						break;
+					case 4:
+						map.setResource(x, y, lake);					
+						break;
+					case 5:
+						map.setResource(x, y, stone);					
+						break;
+					case 6:
+						map.setResource(x, y, tree);					
+						break;
+				}
+			}
+		}		
+	}
+	
+	public void setHelpfulness(int help){
+		helpfulness = help;
+	}
+	
+	private boolean isHelpful(){
+		if(helpfulness == 0){
+			return false;
+		}else if(helpfulness == 1){
+			return CommonState.r.nextBoolean();
+		}else{
+			return true;
+		}
+	}
+	
+	public void increaseHappiness(){
+		int happy = happiness.getQuantity();
+		happiness.setQuantity(happy + 1);
+	}
+	
+	public void increaseUnhappiness(){
+		int unhappy = unhappiness.getQuantity();
+		unhappiness.setQuantity(unhappy + 1);
+	}
+	
+	public int getHappiness(){
+		return happiness.getQuantity();
+	}
+	
+	public int getUnhappiness(){
+		return unhappiness.getQuantity();
+	}
+	
+	private void decide(String resourceName, AppResource primary, AppResource res2, AppResource res3, AppResource res4, AppResource res5){
+		boolean choice = CommonState.r.nextBoolean();
+		int resourceChoice = CommonState.r.nextInt(4);
+		if(primary.getQuantity() >= 100){
+			gathering = false;			
+		}
+		if(primary.getQuantity() < 100){
+			if(resourceName.equals("crop")){
+				model.add(self.asIndividual(), pGather, primary.asIndividual());
+				gathering = true;
+				increaseHappiness();
+				return;
+			}
+		}else if(res2.getQuantity() < 100 && resourceChoice == 0){
+			if(choice && !coordSent){
+				model.add(self.asIndividual(), pCoord, res2.asIndividual());				
+				coordSent = true;				
+				oldFood = food.getQuantity();
+				oldMoney = money.getQuantity();
+				oldWater = water.getQuantity();
+				oldWood = wood.getQuantity();
+				oldBrick = brick.getQuantity();
+				impatience = 0;
+				return;
+			}else if(!exchangeSent){
+				model.add(primary.asIndividual(), pStartExchange, res2.asIndividual());				
+				exchangeSent = true;
+				// Remove 10 from primary resource -- treat this as "sending 10 primary
+				// resources in exchange message"				
+				int quantity = primary.asIndividual().getProperty(pQuantity).getInt();				
+				primary.asIndividual().removeAll(pQuantity);
+				primary.asIndividual().addLiteral(pQuantity, new Integer(quantity - 10));
+				return;
+			}
+		}else if(res3.getQuantity() < 100 && resourceChoice == 1){
+			if(choice && !coordSent){
+				model.add(self.asIndividual(), pCoord, res3.asIndividual());				
+				coordSent = true;
+				oldFood = food.getQuantity();
+				oldMoney = money.getQuantity();
+				oldWater = water.getQuantity();
+				oldWood = wood.getQuantity();
+				oldBrick = brick.getQuantity();
+				impatience = 0;
+				return;
+			}else if(!exchangeSent){
+				model.add(primary.asIndividual(), pStartExchange, res3.asIndividual());				
+				exchangeSent = true;
+				// Remove 10 from primary resource -- treat this as "sending 10 primary
+				// resources in exchange message"				
+				int quantity = primary.asIndividual().getProperty(pQuantity).getInt();				
+				primary.asIndividual().removeAll(pQuantity);
+				primary.asIndividual().addLiteral(pQuantity, new Integer(quantity - 10));
+				return;
+			}
+		}else if(res4.getQuantity() < 100 && resourceChoice == 2){
+			if(choice && !coordSent){
+				model.add(self.asIndividual(), pCoord, res4.asIndividual());				
+				coordSent = true;
+				oldFood = food.getQuantity();
+				oldMoney = money.getQuantity();
+				oldWater = water.getQuantity();
+				oldWood = wood.getQuantity();
+				oldBrick = brick.getQuantity();
+				impatience = 0;
+				return;
+			}else if(!exchangeSent){
+				model.add(primary.asIndividual(), pStartExchange, res4.asIndividual());				
+				exchangeSent = true;
+				// Remove 10 from primary resource -- treat this as "sending 10 primary
+				// resources in exchange message"				
+				int quantity = primary.asIndividual().getProperty(pQuantity).getInt();				
+				primary.asIndividual().removeAll(pQuantity);
+				primary.asIndividual().addLiteral(pQuantity, new Integer(quantity - 10));
+				return;
+			}
+		}else if(res5.getQuantity() < 100 && resourceChoice == 3){
+			if(choice && !coordSent){
+				model.add(self.asIndividual(), pCoord, res5.asIndividual());				
+				coordSent = true;
+				oldFood = food.getQuantity();
+				oldMoney = money.getQuantity();
+				oldWater = water.getQuantity();
+				oldWood = wood.getQuantity();
+				oldBrick = brick.getQuantity();
+				impatience = 0;
+				return;
+			}else if(!exchangeSent){
+				model.add(primary.asIndividual(), pStartExchange, res5.asIndividual());				
+				exchangeSent = true;
+				// Remove 10 from primary resource -- treat this as "sending 10 primary
+				// resources in exchange message"				
+				int quantity = primary.asIndividual().getProperty(pQuantity).getInt();				
+				primary.asIndividual().removeAll(pQuantity);
+				primary.asIndividual().addLiteral(pQuantity, new Integer(quantity - 10));
+				return;
+			}
+		}	
+	}
+	
+	public void move(){
+		if(forcedMove){
+			forcedMove = false;
+			return;
+		}
+		if(wait){
+			return;
+		}
+		RDFNode oldTile = self.getPositionedAt();
+		int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+		int oldY = oldTile.asResource().getProperty(pYPosition).getInt();		
+		String resourceName = map.getResource(oldX, oldY).getName();
+		String raw = "";			
+		
+		// Check if current position has needed tile
+		// Exchange works by making sure participant has enough of its own resource according to its role
+		// and then sends a triple with (ownResource metis:exchange neededResource) where neededResource
+		// will be routed to the best-matching participant with the related role.
+		if(!coordSent && !coordReceived && !exchangeSent){
+			switch(role.getName()){			
+				case "farmer":
+					raw = "metis:crop";	
+					decide(resourceName, food, money, water, wood, brick);								
+					break;
+				case "banker":
+					raw = "metis:gold";					
+					decide(resourceName, money, water, wood, brick, food);	
+					break;
+				case "purifier":
+					raw = "metis:lake";					
+					decide(resourceName, water, wood, brick, food, money);		
+					break;
+				case "miner":
+					raw = "metis:stone";					
+					decide(resourceName, brick, food, money, water, wood);			
+					break;
+				case "lumberjack":
+					raw = "metis:tree";					
+					decide(resourceName, wood, brick, food, money, water);			
+				break;
+			}
+		}
+		
+		if(gathering){
+			return;
+		}
+		
+		if(path.isEmpty() && coordSent){			
+			if(oldTile.equals(destinationC)){
+				switch(resourceName){
+				case "crop":
+					if(food.getQuantity() < 100){						
+						if(impatience > tolerance){
+							model.add(self.asIndividual(), pCoordEnd, food.asIndividual());
+							coordSent = false;
+							increaseUnhappiness();
+						}else{
+							model.add(self.asIndividual(), pCoordGather, food.asIndividual());
+							increaseHappiness();
+						}
+						if(oldFood == food.getQuantity()){
+							impatience++;
+						}
+					}else{
+						model.add(self.asIndividual(), pCoordEnd, food.asIndividual());
+						coordSent = false;
+						impatience = 0;
+					}
+					return;
+				case "gold":
+					if(money.getQuantity() < 100){
+						if(impatience > tolerance){
+							model.add(self.asIndividual(), pCoordEnd, money.asIndividual());
+							coordSent = false;
+							increaseUnhappiness();
+						}else{
+							model.add(self.asIndividual(), pCoordGather, money.asIndividual());
+							increaseHappiness();
+						}
+						if(oldMoney == money.getQuantity()){
+							impatience++;
+						}
+					}else{
+						model.add(self.asIndividual(), pCoordEnd, money.asIndividual());
+						coordSent = false;
+						impatience = 0;
+					}
+					return;
+				case "lake":
+					if(water.getQuantity() < 100){
+						if(impatience > tolerance){
+							model.add(self.asIndividual(), pCoordEnd, water.asIndividual());
+							coordSent = false;
+							increaseUnhappiness();
+						}else{
+							model.add(self.asIndividual(), pCoordGather, water.asIndividual());
+							increaseHappiness();
+						}
+						if(oldWater == water.getQuantity()){
+							impatience++;
+						}
+					}else{
+						model.add(self.asIndividual(), pCoordEnd, water.asIndividual());
+						coordSent = false;
+						impatience = 0;
+					}
+					return;
+				case "tree":
+					if(wood.getQuantity() < 100){
+						if(impatience > tolerance){
+							model.add(self.asIndividual(), pCoordEnd, wood.asIndividual());
+							coordSent = false;
+							increaseUnhappiness();
+						}else{
+							model.add(self.asIndividual(), pCoordGather, wood.asIndividual());
+							increaseHappiness();
+						}
+						if(oldWood == wood.getQuantity()){
+							impatience++;
+						}
+					}else{
+						model.add(self.asIndividual(), pCoordEnd, wood.asIndividual());
+						coordSent = false;
+						impatience = 0;
+					}
+					return;
+				case "stone":
+					if(brick.getQuantity() < 100){
+						if(impatience > tolerance){
+							model.add(self.asIndividual(), pCoordEnd, brick.asIndividual());
+							coordSent = false;
+							increaseUnhappiness();
+						}else{
+							model.add(self.asIndividual(), pCoordGather, brick.asIndividual());
+							increaseHappiness();
+						}
+						if(oldBrick == brick.getQuantity()){
+							impatience++;
+						}
+					}else{
+						model.add(self.asIndividual(), pCoordEnd, brick.asIndividual());
+						coordSent = false;
+						impatience = 0;
+					}
+					return;
+				}	
+			}else{	
+				// If patience runs out waiting for an answer, cancel the coord. If an accepted coord does arrive however, end it immediately.
+				if(nextStep == null){
+					if(impatience > tolerance){
+						cancelCoord = true;
+						coordSent = false;
+						impatience = 0;
+					}else{
+						impatience++;
+					}
+				}else{
+					/*
+					We know what the last tile will hold -- the raw resource we need to extract.
+					Therefore we can force an impatient move without any consequences and not
+					having to wait for an answer from another participant.
+					*/
+					model.add(self.asIndividual(), pMove, nextStep.asIndividual());
+					model.addLiteral(self.asIndividual(), pImpatient, true);
+					impatience = 0;
+					nextStep = null;
+				}
+			}
+			return;
+		}
+		
+		if(path.isEmpty() && !coordReceived){			
+			newX = CommonState.r.nextInt(width);
+			newY = CommonState.r.nextInt(height);
+			if(oldX == newX && oldY == newY){
+				newX = CommonState.r.nextInt(width);
+				newY = CommonState.r.nextInt(height);
+			}
+			System.out.println(name + ": old(" + oldX + ", " +oldY + "), new(" + newX + ", " + newY + ")");
+			path = map.findPath(oldX, oldY, newX, newY);
+			nextStep = path.remove(0);
+			impatience = 0;
+			if(!role.getName().equals("security")){
+				String[] triple = {"?tile", "metis:hasResource", raw};
+				peer.addQuery(triple);
+			}			
+		}
+		
+		if(coordReceived && oldTile.equals(destinationC)){
+			String[] inform = {prefix + "participant" + name, pPositionedAt.toString(), self.getPositionedAt().toString()};
+			peer.addInform(coordID, inform);
+			coordReceived = false;
+			wait = true;
+			return;
+		}
+		
+		// Add a move command for the rule engine to work on
+		if(impatience == 0){
+			model.add(self.asIndividual(), pMove, nextStep.asIndividual());
+			model.addLiteral(self.asIndividual(), pImpatient, false);			
+		}else if(impatience >= tolerance){
+			model.add(self.asIndividual(), pMove, nextStep.asIndividual());
+			model.addLiteral(self.asIndividual(), pImpatient, true);
+			impatience = 0;
+			if(!path.isEmpty()){
+				nextStep = path.remove(0);
+			}
+			return;
+		}
+		impatience++;
+		
+		if(nextStep.getBeenVisited() == true){
+			model.add(self.asIndividual(), pMove, nextStep.asIndividual());
+			if(!path.isEmpty()){
+				nextStep = path.remove(0);
+			}
+			impatience = 0;
+		}
+		
+		
+		
+		//System.out.println(name + ": at(" + oldX + ", " +oldY + ")");
+	}	
+	
+	/**
+	 * Player received an EOL about a tile, meaning no-one has visited the tile.
+	 * Therefore, force a move there.
+	 * @param triple Triple containing tile position for player to move to.
+	 */
+	public void forceMove(String[] triple){		
+		if(gathering == false && nextStep != null && nextStep.asIndividual().toString().equals(triple[0])){
+			model.add(self.asIndividual(), pMove, nextStep.asIndividual());
+			model.addLiteral(self.asIndividual(), pImpatient, true);
+			impatience = 0;
+			if(!path.isEmpty()){
+				nextStep = path.remove(0);
+			}
+			// Don't call the standard move function next time.
+			forcedMove = true;
+		}
+	}
+	
+	public void cancelCoord(){
+		coordSent = false;
+	}
+	
+	/**
+	 * Attempt to co-ordinate with another player if they need a resource this player can gather.
+	 * Randomise the chance of offering help if a suitable match has been found, otherwise
+	 * pass on the query to some other player
+	 * @param triple Co-ordinate command with player and resource in need.
+	 */
+	public String coord(int nodeID, String[] triple){		
+		boolean offer = isHelpful();
+		String reply = "false";
+		if(!offer && !coordReceived){
+			return reply;
+		}
+		coordID = nodeID;
+		String object = triple[2];
+		switch(role.getName()){			
+		case "farmer":
+			if(object.contains("food")){
+				for(int x = 0; x < width; x++){
+					for(int y = 0; y < height; y++){
+						if(map.getNode(x, y).getBeenVisited() && map.getNode(x, y).getHasResource().equals(crop)){
+							reply = prefix + x + "," + y;
+							RDFNode oldTile = self.getPositionedAt();
+							int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+							int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+							path = map.findPath(oldX, oldY, x, y);
+							nextStep = path.remove(0);
+							impatience = 0;
+							coordReceived = true;
+							destinationC = model.createResource(prefix + x + "," + y);
+							return reply;
+						}
+					}
+				}
+			}
+			break;
+		case "banker":
+			if(object.contains("money")){				
+				for(int x = 0; x < width; x++){
+					for(int y = 0; y < height; y++){
+						if(map.getNode(x, y).getBeenVisited() && map.getNode(x, y).getHasResource().equals(gold)){
+							reply = prefix + x + "," + y;
+							RDFNode oldTile = self.getPositionedAt();
+							int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+							int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+							path = map.findPath(oldX, oldY, x, y);
+							nextStep = path.remove(0);
+							impatience = 0;
+							coordReceived = true;
+							destinationC = model.createResource(prefix + x + "," + y);
+							return reply;
+						}
+					}
+				}
+			}
+			break;
+		case "purifier":
+			if(object.contains("water")){				
+				for(int x = 0; x < width; x++){
+					for(int y = 0; y < height; y++){
+						if(map.getNode(x, y).getBeenVisited() && map.getNode(x, y).getHasResource().equals(lake)){
+							reply = prefix + x + "," + y;
+							RDFNode oldTile = self.getPositionedAt();
+							int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+							int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+							path = map.findPath(oldX, oldY, x, y);
+							nextStep = path.remove(0);
+							impatience = 0;
+							coordReceived = true;
+							destinationC = model.createResource(prefix + x + "," + y);
+							return reply;
+						}
+					}
+				}
+			}
+			break;
+		case "lumberjack":
+			if(object.contains("wood")){				
+				for(int x = 0; x < width; x++){
+					for(int y = 0; y < height; y++){
+						if(map.getNode(x, y).getBeenVisited() && map.getNode(x, y).getHasResource().equals(tree)){
+							reply = prefix + x + "," + y;
+							RDFNode oldTile = self.getPositionedAt();
+							int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+							int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+							path = map.findPath(oldX, oldY, x, y);
+							nextStep = path.remove(0);
+							impatience = 0;
+							coordReceived = true;
+							destinationC = model.createResource(prefix + x + "," + y);
+							return reply;
+						}
+					}
+				}
+			}
+			break;
+		case "miner":
+			if(object.contains("brick")){
+				for(int x = 0; x < width; x++){
+					for(int y = 0; y < height; y++){
+						if(map.getNode(x, y).getBeenVisited() && map.getNode(x, y).getHasResource().equals(stone)){
+							reply = prefix + x + "," + y;
+							RDFNode oldTile = self.getPositionedAt();
+							int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+							int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+							path = map.findPath(oldX, oldY, x, y);
+							nextStep = path.remove(0);
+							impatience = 0;
+							coordReceived = true;
+							destinationC = model.createResource(prefix + x + "," + y);
+							return reply;
+						}
+					}
+				}
+			}
+			break;
+		default:
+			break;	
+		}
+		return reply;
+	}
+	
+	public String exchange(String[] triple){
+		String reply = "false";
+		// Limit to one exchange at a time, otherwise inventory mishaps will happen (blame the rules...)
+		if(exchanging){
+			return reply;
+		}
+		Resource selling = model.createResource(triple[0]);	// What other participant is giving us for exchange
+		Resource buying = model.createResource(triple[2]);	// What other participant wants		
+				int sQuantity = selling.getProperty(pQuantity).getInt();
+		int bQuantity = buying.getProperty(pQuantity).getInt();
+		boolean choice = isHelpful();
+		if(choice && bQuantity > 10){
+			model.add(selling, pExchange, buying);
+			reply = "true";
+			exchanging = true;
+		}
+		return reply;
+	}
+	
+	public void stopExchanging(){
+		exchanging = false;
+	}
+	
+	public void exchangeSuccessful(String[] triple){
+		Resource selling = model.createResource(triple[0]);
+		Resource buying = model.createResource(triple[2]);
+		// Use "CompleteExchange" rule, but swap around buying and selling to make
+		// sure correct resources are updated
+		model.add(buying, pExchange, selling);
+		stopExchanging();
+		/*
+		Property pQuantity = model.createProperty(prefix + "quantity");		
+		int sQuantity = selling.getProperty(pQuantity).getInt();
+		int bQuantity = buying.getProperty(pQuantity).getInt();
+		buying.removeAll(pQuantity);
+		buying.addLiteral(pQuantity, new Integer(bQuantity + 10));
+		selling.removeAll(pQuantity);
+		selling.addLiteral(pQuantity, new Integer(sQuantity - 10));
+		*/
+	}
+	
+	public void exchangeFailed(String[] triple){
+		// Recover the 10 "sent primary resources" from exchange message.		
+		Resource primary = model.createResource(triple[0]);
+		int quantity = primary.getProperty(pQuantity).getInt();				
+		primary.removeAll(pQuantity);
+		primary.addLiteral(pQuantity, new Integer(quantity + 10));
+		stopExchanging();
+	}
+	
+	public void stopWaiting(){
+		coordReceived = false;
+		wait = false;
+	}
+	
+	/**
+	 * Move to a tile with the resource needed. This destination is known by the co-ord player.
+	 * First part of a co-ord is getting to the destination tile. The second part is waiting
+	 * for the co-ord player to get to the destination so that we can extract the resource
+	 * without needing a matching role (the co-ord player "offers" their role for this).
+	 * @param triple
+	 */
+	public void planCoord(String[] triple){
+		if(cancelCoord == true){
+			cancelCoord = false;
+			coordSent = false;
+			int id = Integer.parseInt(triple[0].toString().replaceAll("\\D+",""));
+			String[] inform = {triple[0], pCoordEnd.toString(), ""+true};
+			peer.addInform(id, inform);
+		}else if(triple[1].equals("metis:coord")){
+			Resource coordParticipant = model.createResource(triple[0]);
+			model.createStatement(self.asIndividual(), pCoordAgree, coordParticipant);
+			RDFNode oldTile = self.getPositionedAt();
+			int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+			int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+			destinationC = model.createResource(triple[2]);
+			int x = destinationC.getProperty(pXPosition).getInt();
+			int y = destinationC.getProperty(pYPosition).getInt();
+			path = map.findPath(oldX, oldY, x, y);
+			nextStep = path.remove(0);
+			impatience = 0;
+			plannedPath = true;
+		}
+	}
+	
+	public void planPath(String[] triple){	
+		if(plannedPath || coordSent || coordReceived || wait){
+			return;
+		}		
+		RDFNode oldTile = self.getPositionedAt();
+		int oldX = oldTile.asResource().getProperty(pXPosition).getInt();
+		int oldY = oldTile.asResource().getProperty(pYPosition).getInt();
+		Resource destination = model.createResource(triple[0]);
+		int x = destination.getProperty(pXPosition).getInt();
+		int y = destination.getProperty(pYPosition).getInt();
+		switch(role.getName()){
+			case "farmer":
+				if(triple[2].equals("metis:crop")){
+					path = map.findPath(oldX, oldY, x, y);
+					nextStep = path.remove(0);
+					impatience = 0;
+					plannedPath = true;
+				}
+				break;
+			case "banker":
+				if(triple[2].equals("metis:gold")){
+					path = map.findPath(oldX, oldY, newX, newY);
+					nextStep = path.remove(0);
+					impatience = 0;
+					plannedPath = true;
+				}
+				break;
+			case "purifier":
+				if(triple[2].equals("metis:lake")){
+					path = map.findPath(oldX, oldY, newX, newY);
+					nextStep = path.remove(0);
+					impatience = 0;
+					plannedPath = true;
+				}
+				break;
+			case "miner":
+				if(triple[2].equals("metis:stone")){
+					path = map.findPath(oldX, oldY, newX, newY);
+					nextStep = path.remove(0);
+					impatience = 0;
+					plannedPath = true;
+				}
+				break;
+			case "lumberjack":
+				if(triple[2].equals("metis:tree")){
+					path = map.findPath(oldX, oldY, newX, newY);
+					nextStep = path.remove(0);
+					impatience = 0;
+					plannedPath = true;
+				}
+				break;
+		}
+	}
+	
+	public String getRole(){
+		return role.getName();
+	}
+	
+	public int getXPosition(){
+		return self.getPositionedAt().asResource().getProperty(pXPosition).getInt();
+	}
+	
+	public int getYPosition(){
+		return self.getPositionedAt().asResource().getProperty(pYPosition).getInt();
+	}		
+	
+	public String toString(){
+		return role.getName() + ", (" + getXPosition() + ", " + getYPosition() + "), " +				
+				"brick: " + brick.getQuantity() + ", " +
+				"food: " + food.getQuantity() + ", " +
+				"money: " + money.getQuantity() + ", " +
+				"wood: " + wood.getQuantity() + ", " +
+				"water: " + water.getQuantity() + ", " +
+				"helpfulness: " + helpfulness + ", " +
+				"happiness: " + happiness.getQuantity() + ", " +
+				"unhappiness: " + unhappiness.getQuantity() + ", " +
+				"total happiness: " + (happiness.getQuantity() - unhappiness.getQuantity());
+				
+	}
+}

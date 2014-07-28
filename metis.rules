@@ -1,0 +1,177 @@
+// Thanks to http://hydrogen.informatik.tu-cottbus.de/wiki/index.php/Advanced_Jena_Rules
+// for eliminating infinite-loop problem (ruleFiredFor property)
+
+@prefix metis: <http://www.abdn.ac.uk/metis.owl#>.
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.
+
+[SafeMove:
+(?participant rdf:type metis:Participant)
+(?participant metis:name "self")
+(?participant metis:positionedAt ?current)
+(?participant metis:move ?tile)
+(?tile metis:beenVisited 'true'^^xsd:boolean)
+noValue(?participant metis:ruleFiredFor ?tile)
+->
+//print("SafeMove " ?tile)
+remove(2)
+remove(3)
+(?participant metis:positionedAt ?tile)
+(?participant metis:ruleFiredFor ?tile)
+hide(metis:ruleFiredFor)
+]
+
+[RiskyMove:
+(?participant rdf:type metis:Participant)
+(?participant metis:name "self")
+(?participant metis:positionedAt ?current)
+(?participant metis:move ?tile)
+(?participant metis:impatient 'false'^^xsd:boolean)
+(?tile metis:beenVisited ?visited)
+noValue(?participant metis:ruleFiredFor ?tile)
+lhs(
+	test(?tile, "metis:hasResource", "metis:Raw", equal(?visited, 'true'^^xsd:boolean), ?visited)
+)
+->
+//print("RiskyMove " ?tile)
+remove(2)
+remove(3)
+remove(4)
+remove(5)
+(?participant metis:positionedAt ?tile)
+(?tile metis:beenVisited 'true'^^xsd:boolean)
+(?participant metis:ruleFiredFor ?tile)
+hide(metis:ruleFiredFor)
+]
+
+[ImpatientMove:
+(?participant rdf:type metis:Participant)
+(?participant metis:name "self")
+(?participant metis:positionedAt ?current)
+(?participant metis:move ?tile)
+(?participant metis:impatient 'true'^^xsd:boolean)
+(?tile metis:beenVisited ?visited)
+noValue(?participant metis:ruleFiredFor ?tile)
+->
+//print("ImpatientMove " ?tile)
+remove(2)
+remove(3)
+remove(4)
+remove(5)
+(?participant metis:positionedAt ?tile)
+(?tile metis:beenVisited 'true'^^xsd:boolean)
+(?participant metis:ruleFiredFor ?tile)
+hide(metis:ruleFiredFor)
+]
+
+[Gather:
+(?participant rdf:type metis:Participant)
+(?role rdf:type metis:Role)
+(?participant metis:hasRole ?role)
+(?participant metis:gather ?resource)
+(?resource metis:quantity ?quantity)
+sum(?quantity, 10, ?c)
+noValue(?participant metis:ruleFiredFor ?resource)
+->
+//print("Gather " ?resource)
+remove(3)
+remove(4)
+(?resource metis:quantity ?c)
+(?participant metis:ruleFiredFor ?resource)
+hide(metis:ruleFiredFor)
+]
+
+[StartCoord:
+(?participantSelf rdf:type metis:Participant)
+(?participantSelf metis:name "self")
+(?tileSelf rdf:type metis:Tile)
+(?participantSelf metis:positionedAt ?tileSelf)
+(?participantSelf metis:coord ?resource)
+(?resource metis:quantity ?quantity)
+noValue(?participantSelf metis:ruleFiredFor ?resource)
+lhs(
+	test(?participantSelf, "metis:coord", ?resource, greaterThan(?quantity, 100), ?quantity)
+)
+->
+//print("StartCoord " ?resource)
+remove(4)
+(?participantSelf metis:ruleFiredFor ?resource)
+hide(metis:ruleFiredFor)
+print("Coord")
+]
+
+[Coord:
+(?participantSelf rdf:type metis:Participant)
+(?participantSelf metis:name "self")
+(?tileSelf rdf:type metis:Tile)
+(?participantSelf metis:positionedAt ?tileSelf)
+(?coord rdf:type metis:Participant)
+notEqual(?participantSelf ?coord)
+(?coord metis:positionedAt ?tileCoord)
+equal(?tileSelf ?tileCoord)
+(?participantSelf metis:coordGather ?resource)
+(?resource metis:quantity ?quantity)
+sum(?quantity, 10, ?c)
+noValue(?participantSelf metis:ruleFiredFor ?resource)
+->
+print("Coord " ?resource)
+remove(8)
+remove(9)
+(?resource metis:quantity ?c)
+(?participantSelf metis:ruleFiredFor ?resource)
+hide(metis:ruleFiredFor)
+]
+
+[EndCoord:
+(?participantSelf rdf:type metis:Participant)
+(?participantSelf metis:name "self")
+(?tileSelf rdf:type metis:Tile)
+(?coord rdf:type metis:Participant)
+notEqual(?participantSelf ?coord)
+(?coord metis:positionedAt ?tileCoord)
+equal(?tileSelf ?tileCoord)
+(?participantSelf metis:coordEnd ?resource)
+noValue(?participantSelf metis:ruleFiredFor ?resource)
+->
+//print("EndCoord " ?resource)
+remove(5)
+remove(7)
+(?coord metis:coordEnd true)
+(?participantSelf metis:ruleFiredFor ?resource)
+hide(metis:ruleFiredFor)
+]
+
+[StartExchange:
+(?participant rdf:type metis:Participant)
+(?participant metis:name "self")
+(?sell metis:startExchange ?buy)
+(?buy metis:quantity ?bQuantity)
+lhs(
+	test(?sell, "metis:exchange", ?buy, greaterThan(?bQuantity, 100), ?bQuantity)
+)
+noValue(?participantSelf metis:ruleFiredFor ?buy)
+->
+//print("StartExchange " ?sell " " ?buy)
+remove(2)
+(?participantSelf metis:ruleFiredFor ?buy)
+hide(metis:ruleFiredFor)
+]
+
+[CompleteExchange:
+(?participant rdf:type metis:Participant)
+(?participant metis:name "self")
+(?sell metis:exchange ?buy)
+(?buy metis:quantity ?bQuantity)
+(?sell metis:quantity ?sQuantity)
+difference(?bQuantity, 10, ?b)
+sum(?sQuantity, 10, ?s)
+noValue(?participantSelf metis:ruleFiredFor "exchange")
+->
+//print("CompleteExchange " ?sell ?buy)
+remove(2)
+remove(3)
+remove(4)
+(?buy metis:quantity ?b)
+(?sell metis:quantity ?s)
+(?participantSelf metis:ruleFiredFor "exchange")
+hide(metis:ruleFiredFor)
+]

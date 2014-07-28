@@ -1,0 +1,385 @@
+<?xml version="1.0"?>
+
+
+<!DOCTYPE rdf:RDF [
+    <!ENTITY j.0 "http://thewebsemantic.com/" >
+    <!ENTITY owl "http://www.w3.org/2002/07/owl#" >
+    <!ENTITY metis "http://www.abdn.ac.uk/metis.owl#" >
+    <!ENTITY xsd "http://www.w3.org/2001/XMLSchema#" >
+    <!ENTITY rdfs "http://www.w3.org/2000/01/rdf-schema#" >
+    <!ENTITY rdf "http://www.w3.org/1999/02/22-rdf-syntax-ns#" >
+]>
+
+
+<rdf:RDF xmlns="http://www.abdn.ac.uk/metis.owl#"
+     xml:base="http://www.abdn.ac.uk/metis.owl"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:j.0="http://thewebsemantic.com/"
+     xmlns:metis="http://www.abdn.ac.uk/metis.owl#">
+    <owl:Ontology rdf:about="http://www.abdn.ac.uk/metis.owl"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Annotation properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://thewebsemantic.com/javaclass -->
+
+    <owl:AnnotationProperty rdf:about="&j.0;javaclass"/>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#walkable -->
+
+    <owl:AnnotationProperty rdf:about="&metis;walkable"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Object Properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#consumes -->
+
+    <owl:ObjectProperty rdf:about="&metis;consumes">
+        <rdfs:range rdf:resource="&metis;Raw"/>
+        <rdfs:domain rdf:resource="&metis;Role"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#hasResource -->
+
+    <owl:ObjectProperty rdf:about="&metis;hasResource">
+        <rdfs:range rdf:resource="&metis;Resource"/>
+        <rdfs:domain rdf:resource="&metis;Tile"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#hasRole -->
+
+    <owl:ObjectProperty rdf:about="&metis;hasRole">
+        <rdfs:domain rdf:resource="&metis;Participant"/>
+        <rdfs:range rdf:resource="&metis;Role"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#knows -->
+
+    <owl:ObjectProperty rdf:about="&metis;knows">
+        <rdf:type rdf:resource="&owl;SymmetricProperty"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#owns -->
+
+    <owl:ObjectProperty rdf:about="&metis;owns">
+        <rdfs:domain rdf:resource="&metis;Participant"/>
+        <rdfs:range rdf:resource="&metis;Resource"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#positionedAt -->
+
+    <owl:ObjectProperty rdf:about="&metis;positionedAt">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:domain rdf:resource="&metis;Participant"/>
+        <rdfs:range rdf:resource="&metis;Tile"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#produces -->
+
+    <owl:ObjectProperty rdf:about="&metis;produces">
+        <rdfs:range rdf:resource="&metis;Processed"/>
+        <rdfs:domain rdf:resource="&metis;Role"/>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Data properties
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#beenVisited -->
+
+    <owl:DatatypeProperty rdf:about="&metis;beenVisited">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:domain rdf:resource="&metis;Tile"/>
+        <rdfs:range rdf:resource="&xsd;boolean"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#name -->
+
+    <owl:DatatypeProperty rdf:about="&metis;name">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:range rdf:resource="&xsd;string"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#quantity -->
+
+    <owl:DatatypeProperty rdf:about="&metis;quantity">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:domain rdf:resource="&metis;Resource"/>
+        <rdfs:range rdf:resource="&xsd;integer"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#xPosition -->
+
+    <owl:DatatypeProperty rdf:about="&metis;xPosition">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:domain rdf:resource="&metis;Tile"/>
+        <rdfs:range rdf:resource="&xsd;integer"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#yPosition -->
+
+    <owl:DatatypeProperty rdf:about="&metis;yPosition">
+        <rdf:type rdf:resource="&owl;FunctionalProperty"/>
+        <rdfs:domain rdf:resource="&metis;Tile"/>
+        <rdfs:range rdf:resource="&xsd;integer"/>
+    </owl:DatatypeProperty>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Commodity -->
+
+    <owl:Class rdf:about="&metis;Commodity">
+        <rdfs:subClassOf rdf:resource="&metis;Resource"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Neighbour -->
+
+    <owl:Class rdf:about="&metis;Neighbour">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;knows"/>
+                <owl:someValuesFrom rdf:resource="&metis;Participant"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Participant -->
+
+    <owl:Class rdf:about="&metis;Participant">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;name"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;string"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;hasRole"/>
+                <owl:someValuesFrom rdf:resource="&metis;Role"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;positionedAt"/>
+                <owl:onClass rdf:resource="&metis;Tile"/>
+                <owl:maxQualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:maxQualifiedCardinality>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Penalty -->
+
+    <owl:Class rdf:about="&metis;Penalty">
+        <rdfs:subClassOf rdf:resource="&metis;Resource"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Processed -->
+
+    <owl:Class rdf:about="&metis;Processed">
+        <rdfs:subClassOf rdf:resource="&metis;Resource"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Raw -->
+
+    <owl:Class rdf:about="&metis;Raw">
+        <rdfs:subClassOf rdf:resource="&metis;Resource"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Resource -->
+
+    <owl:Class rdf:about="&metis;Resource">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;quantity"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;int"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;name"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;string"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Role -->
+
+    <owl:Class rdf:about="&metis;Role">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;consumes"/>
+                <owl:someValuesFrom rdf:resource="&metis;Raw"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;produces"/>
+                <owl:someValuesFrom rdf:resource="&metis;Processed"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;name"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;string"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- http://www.abdn.ac.uk/metis.owl#Tile -->
+
+    <owl:Class rdf:about="&metis;Tile">
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;yPosition"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;int"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;hasResource"/>
+                <owl:someValuesFrom rdf:resource="&metis;Raw"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;xPosition"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;int"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;beenVisited"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;boolean"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+        <rdfs:subClassOf>
+            <owl:Restriction>
+                <owl:onProperty rdf:resource="&metis;name"/>
+                <owl:qualifiedCardinality rdf:datatype="&xsd;nonNegativeInteger">1</owl:qualifiedCardinality>
+                <owl:onDataRange rdf:resource="&xsd;string"/>
+            </owl:Restriction>
+        </rdfs:subClassOf>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // General axioms
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    <rdf:Description>
+        <rdf:type rdf:resource="&owl;AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="&metis;Commodity"/>
+            <rdf:Description rdf:about="&metis;Processed"/>
+            <rdf:Description rdf:about="&metis;Raw"/>
+        </owl:members>
+    </rdf:Description>
+    <rdf:Description>
+        <rdf:type rdf:resource="&owl;AllDisjointClasses"/>
+        <owl:members rdf:parseType="Collection">
+            <rdf:Description rdf:about="&metis;Neighbour"/>
+            <rdf:Description rdf:about="&metis;Participant"/>
+            <rdf:Description rdf:about="&metis;Resource"/>
+            <rdf:Description rdf:about="&metis;Role"/>
+            <rdf:Description rdf:about="&metis;Tile"/>
+        </owl:members>
+    </rdf:Description>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 3.4.2) http://owlapi.sourceforge.net -->
+
